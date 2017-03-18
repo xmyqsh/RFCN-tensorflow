@@ -2,7 +2,7 @@ import numpy as np
 
 if __name__ == "__main__":
 	import tensorflow as tf
-	from .ROIPoolingWrapper import *
+	from ROIPoolingWrapper import *
 
 	with tf.Session() as sess:
 		img = np.zeros((1,8,8, 9), np.float32)
