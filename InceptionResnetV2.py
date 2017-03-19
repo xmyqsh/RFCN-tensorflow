@@ -107,17 +107,19 @@ class InceptionResnetV2:
 		trainBnEntered = False
 
 		currBlock = ""
-		def beginBlock(name):
-			nonlocal trainBnEntered
-			nonlocal currBlock
+		def beginBlock(name, local_trainBnEntered):
+			#nonlocal trainBnEntered
+			#nonlocal currBlock
 
 			currBlock = name
+			trainBnEntered = local_trainBnEntered
 			if (trainFrom is not None) and (not trainBnEntered) and (trainFrom==name or trainFrom=="start"):
 				print("Enabling training on "+trainFrom)
 				if not freezeBatchNorm:
 					trainBatchNormScope.__enter__()
 				weightDecayScope.__enter__()
 				trainBnEntered=True
+			return trainBnEntered, currBlock
 
 		def endBlock(net, scope=True, name=None):
 			if name is None:
@@ -137,36 +139,36 @@ class InceptionResnetV2:
 				with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d], stride=1, padding='SAME'):
 
 					# 149 x 149 x 32
-					beginBlock('Conv2d_1a_3x3')
+					trainBnEntered, currBlock = beginBlock('Conv2d_1a_3x3', trainBnEntered)
 					net = slim.conv2d(inputs, 32, 3, stride=2, padding='VALID', scope='Conv2d_1a_3x3')
 					endBlock(net)
 					# 147 x 147 x 32
-					beginBlock('Conv2d_2a_3x3')
+					trainBnEntered, currBlock = beginBlock('Conv2d_2a_3x3', trainBnEntered)
 					net = slim.conv2d(net, 32, 3, padding='VALID', scope='Conv2d_2a_3x3')
 					endBlock(net)
 					# 147 x 147 x 64
-					beginBlock('Conv2d_2b_3x3')
+					trainBnEntered, currBlock = beginBlock('Conv2d_2b_3x3', trainBnEntered)
 					net = slim.conv2d(net, 64, 3, scope='Conv2d_2b_3x3')
 					endBlock(net)
 					# 73 x 73 x 64
-					beginBlock('MaxPool_3a_3x3')
+					trainBnEntered, currBlock = beginBlock('MaxPool_3a_3x3', trainBnEntered)
 					net = slim.max_pool2d(net, 3, stride=2, padding='VALID', scope='MaxPool_3a_3x3')
 					endBlock(net)
 					# 73 x 73 x 80
-					beginBlock('Conv2d_3b_1x1')
+					trainBnEntered, currBlock = beginBlock('Conv2d_3b_1x1', trainBnEntered)
 					net = slim.conv2d(net, 80, 1, padding='VALID', scope='Conv2d_3b_1x1')
 					endBlock(net)
 					# 71 x 71 x 192
-					beginBlock('Conv2d_4a_3x3')
+					trainBnEntered, currBlock = beginBlock('Conv2d_4a_3x3', trainBnEntered)
 					net = slim.conv2d(net, 192, 3, padding='VALID', scope='Conv2d_4a_3x3')
 					endBlock(net)
 					# 35 x 35 x 192
-					beginBlock('MaxPool_5a_3x3')
+					trainBnEntered, currBlock = beginBlock('MaxPool_5a_3x3', trainBnEntered)
 					net = slim.max_pool2d(net, 3, stride=2, padding='VALID', scope='MaxPool_5a_3x3')
 					endBlock(net)
 
 					# 35 x 35 x 320
-					beginBlock('Mixed_5b')
+					trainBnEntered, currBlock = beginBlock('Mixed_5b', trainBnEntered)
 					with tf.variable_scope('Mixed_5b'):
 						with tf.variable_scope('Branch_0'):
 							tower_conv = slim.conv2d(net, 96, 1, scope='Conv2d_1x1')
@@ -183,12 +185,12 @@ class InceptionResnetV2:
 						net = tf.concat([tower_conv, tower_conv1_1, tower_conv2_2, tower_pool_1], 3)
 
 					endBlock(net)
-					beginBlock('Repeat')
+					trainBnEntered, currBlock = beginBlock('Repeat', trainBnEntered)
 					net = slim.repeat(net, 10, InceptionResnetV2.block35, scale=0.17)
 					endBlock(net)
 
 					# 17 x 17 x 1024
-					beginBlock('Mixed_6a')
+					trainBnEntered, currBlock = beginBlock('Mixed_6a', trainBnEntered)
 					with tf.variable_scope('Mixed_6a'):
 						with tf.variable_scope('Branch_0'):
 							tower_conv = slim.conv2d(net, 384, 3, stride=2, padding='VALID', scope='Conv2d_1a_3x3')
@@ -201,12 +203,12 @@ class InceptionResnetV2:
 						net = tf.concat([tower_conv, tower_conv1_2, tower_pool], 3)
 					endBlock(net)
 
-					beginBlock('Repeat_1')
+					trainBnEntered, currBlock = beginBlock('Repeat_1', trainBnEntered)
 					net = slim.repeat(net, 20, InceptionResnetV2.block17, scale=0.10)
 					endBlock(net)
 					endBlock(net, scope=False, name='aux')
 
-					beginBlock('Mixed_7a')
+					trainBnEntered, currBlock = beginBlock('Mixed_7a', trainBnEntered)
 					with tf.variable_scope('Mixed_7a'):
 						with tf.variable_scope('Branch_0'):
 							tower_conv = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
@@ -223,15 +225,15 @@ class InceptionResnetV2:
 						net = tf.concat([tower_conv_1, tower_conv1_1, tower_conv2_2, tower_pool], 3)
 					endBlock(net)
 
-					beginBlock('Repeat_2')
+					trainBnEntered, currBlock = beginBlock('Repeat_2', trainBnEntered)
 					net = slim.repeat(net, 9, InceptionResnetV2.block8, scale=0.20)
 					endBlock(net)
 
-					beginBlock('Block8')
+					trainBnEntered, currBlock = beginBlock('Block8', trainBnEntered)
 					net = InceptionResnetV2.block8(net, activation_fn=None)
 					endBlock(net)
 
-					beginBlock('Conv2d_7b_1x1')
+					trainBnEntered, currBlock = beginBlock('Conv2d_7b_1x1', trainBnEntered)
 					net = slim.conv2d(net, 1536, 1, scope='Conv2d_7b_1x1')
 					endBlock(net)
 					endBlock(net, scope=False, name='PrePool')
